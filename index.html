@@ -119,13 +119,18 @@
             background: #555;
         }
 
-        .toggle-btn {
+        .toggle-btn, .history-btn {
             margin-top: 10px;
             background: #333;
             padding: 5px 10px;
             border-radius: 5px;
             cursor: pointer;
             color: #fff;
+            display: inline-block;
+        }
+        
+        .hidden {
+            display: none;
         }
     </style>
 </head>
@@ -144,8 +149,11 @@
             <button onclick="addTransaction()">Add Transaction</button>
         </div>
 
-        <h3>Transaction History</h3>
+        <h3>Recent Transactions</h3>
         <div class="transaction-list" id="transaction-list"></div>
+
+        <div class="history-btn" onclick="toggleHistory()">📜 Show History</div>
+        <div class="transaction-list hidden" id="full-history"></div>
 
         <div class="toggle-btn" onclick="toggleDarkMode()">🌙 Toggle Dark Mode</div>
     </div>
@@ -164,6 +172,12 @@
                 return;
             }
 
+            // Prevent balance from going negative
+            if (type === 'expense' && balance - amount < 0) {
+                alert('Insufficient balance! Cannot go negative.');
+                return;
+            }
+
             // Update Balance
             if (type === 'income') {
                 balance += amount;
@@ -173,7 +187,7 @@
             document.getElementById('balance').innerText = balance.toFixed(2);
 
             // Add to transactions
-            transactions.push({ desc, amount, type });
+            transactions.unshift({ desc, amount, type }); // Unshift to add at the start
 
             // Update UI
             updateTransactions();
@@ -185,17 +199,37 @@
 
         function updateTransactions() {
             const transactionList = document.getElementById('transaction-list');
+            const fullHistoryList = document.getElementById('full-history');
             transactionList.innerHTML = '';
+            fullHistoryList.innerHTML = '';
 
-            transactions.forEach((transaction, index) => {
-                const div = document.createElement('div');
-                div.classList.add('transaction', transaction.type);
-                div.innerHTML = `
-                    <span>${transaction.desc}</span>
-                    <span>${transaction.type === 'income' ? '+' : '-'} ₹${transaction.amount.toFixed(2)}</span>
-                `;
-                transactionList.appendChild(div);
+            // Show only the latest 5 transactions on dashboard
+            transactions.slice(0, 5).forEach(transaction => {
+                transactionList.appendChild(createTransactionElement(transaction));
             });
+
+            // Show full history in the history section
+            transactions.forEach(transaction => {
+                fullHistoryList.appendChild(createTransactionElement(transaction));
+            });
+        }
+
+        function createTransactionElement(transaction) {
+            const div = document.createElement('div');
+            div.classList.add('transaction', transaction.type);
+            div.innerHTML = `
+                <span>${transaction.desc}</span>
+                <span>${transaction.type === 'income' ? '+' : '-'} ₹${transaction.amount.toFixed(2)}</span>
+            `;
+            return div;
+        }
+
+        function toggleHistory() {
+            const historyDiv = document.getElementById('full-history');
+            historyDiv.classList.toggle('hidden');
+
+            const btn = document.querySelector('.history-btn');
+            btn.innerText = historyDiv.classList.contains('hidden') ? '📜 Show History' : '📜 Hide History';
         }
 
         function toggleDarkMode() {
