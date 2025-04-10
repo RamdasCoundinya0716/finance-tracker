@@ -4,195 +4,237 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Tracker</title>
-
     <style>
+        /* Google Font */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background: #f4f4f4; color: #333; display: flex; flex-direction: column; align-items: center; height: 100vh; justify-content: center; }
-        .container { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; }
-        input, select, button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #007bff; color: #fff; font-weight: bold; cursor: pointer; border: none; }
-        button:hover { background: #0056b3; }
-        .hidden { display: none; }
-        .transaction { display: flex; justify-content: space-between; padding: 8px; margin: 5px 0; background: #eee; border-radius: 5px; }
-        .income { color: green; } .expense { color: red; }
-    </style>
 
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBizLftvqVmhSAuh6B9erKaj58jzFRnKVE",
-            authDomain: "finance-tracker-1e1b9.firebaseapp.com",
-            projectId: "finance-tracker-1e1b9",
-            storageBucket: "finance-tracker-1e1b9.appspot.com",
-            messagingSenderId: "380732337479",
-            appId: "1:380732337479:web:4116b2a80a1c9c23aa3062",
-            measurementId: "G-0759R5ZVC8"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const auth = getAuth();
-        const db = getFirestore();
-
-        let userId = null;
-
-        // Register new user
-        window.register = function() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            createUserWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    alert("Registration Successful!");
-                    login();
-                })
-                .catch(error => alert(error.message));
-        };
-
-        // Login existing user
-        window.login = function() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            signInWithEmailAndPassword(auth, email, password)
-                .then(user => {
-                    userId = user.user.uid;
-                    document.getElementById('auth-container').classList.add('hidden');
-                    document.getElementById('app-container').classList.remove('hidden');
-                    loadTransactions();
-                })
-                .catch(error => alert(error.message));
-        };
-
-        // Logout user
-        window.logout = function() {
-            signOut(auth).then(() => {
-                document.getElementById('auth-container').classList.remove('hidden');
-                document.getElementById('app-container').classList.add('hidden');
-            });
-        };
-
-        // Add transaction
-        window.addTransaction = async function() {
-            const desc = document.getElementById('desc').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const type = document.getElementById('type').value;
-            const date = document.getElementById('date').value;
-
-            if (!desc || isNaN(amount) || amount <= 0 || !date) {
-                alert("Invalid Input!");
-                return;
-            }
-
-            await addDoc(collection(db, "transactions"), {
-                userId,
-                desc,
-                amount,
-                type,
-                date,
-                timestamp: new Date()
-            });
-
-            loadTransactions();
-        };
-
-        // Load transactions
-        async function loadTransactions() {
-            const transactionList = document.getElementById('transaction-list');
-            transactionList.innerHTML = "";
-
-            const q = query(collection(db, "transactions"), where("userId", "==", userId), orderBy("timestamp", "desc"));
-            const querySnapshot = await getDocs(q);
-            let balance = 0;
-
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
-                balance += data.type === "income" ? data.amount : -data.amount;
-                transactionList.innerHTML += `
-                    <div class="transaction ${data.type}">
-                        <span>${data.date} - ${data.desc}</span>
-                        <span>${data.type === "income" ? "+" : "-"} ₹${data.amount}</span>
-                    </div>`;
-            });
-
-            document.getElementById('balance').innerText = balance;
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s ease;
         }
 
-        // Filter transactions by month
-        window.filterByMonth = async function() {
-            const selectedMonth = document.getElementById('month-filter').value;
-            const transactionList = document.getElementById('history');
-            transactionList.innerHTML = "";
+        body {
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
 
-            if (!selectedMonth) {
-                alert("Please select a month!");
-                return;
-            }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
 
-            const q = query(collection(db, "transactions"), where("userId", "==", userId));
-            const querySnapshot = await getDocs(q);
+        h2 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
 
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
-                if (data.date.startsWith(selectedMonth)) {
-                    transactionList.innerHTML += `
-                        <div class="transaction ${data.type}">
-                            <span>${data.date} - ${data.desc}</span>
-                            <span>${data.type === "income" ? "+" : "-"} ₹${data.amount}</span>
-                        </div>`;
-                }
-            });
-        };
+        .balance {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
 
-    </script>
+        .input-group {
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #007bff;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .transaction-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .transaction {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: #eee;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .income {
+            color: green;
+        }
+
+        .expense {
+            color: red;
+        }
+
+        /* Dark Mode */
+        .dark-mode {
+            background-color: #222;
+            color: #fff;
+        }
+
+        .dark-mode .container {
+            background: #333;
+            color: #fff;
+        }
+
+        .dark-mode input, .dark-mode select, .dark-mode button {
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+        }
+
+        .dark-mode .transaction {
+            background: #555;
+        }
+
+        .toggle-btn, .history-btn {
+            margin-top: 10px;
+            background: #333;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #fff;
+            display: inline-block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-
-    <!-- AUTHENTICATION -->
-    <div class="container" id="auth-container">
-        <h2>Login / Register</h2>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
-        <button onclick="register()">Register</button>
-        <button onclick="login()">Login</button>
-    </div>
-
-    <!-- MAIN APP -->
-    <div class="container hidden" id="app-container">
+    <div class="container">
         <h2>Finance Tracker</h2>
-        <p>Balance: ₹<span id="balance">0</span></p>
+        <p class="balance">Balance: ₹<span id="balance">0</span></p>
 
-        <div>
-            <input type="text" id="desc" placeholder="Description">
-            <input type="number" id="amount" placeholder="Amount">
+        <div class="input-group">
+            <input type="text" id="desc" placeholder="Enter description">
+            <input type="number" id="amount" placeholder="Enter amount">
             <select id="type">
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
             </select>
-            <input type="date" id="date">
             <button onclick="addTransaction()">Add Transaction</button>
         </div>
 
         <h3>Recent Transactions</h3>
-        <div id="transaction-list"></div>
+        <div class="transaction-list" id="transaction-list"></div>
 
-        <h3>Filter by Month</h3>
-        <input type="month" id="month-filter">
-        <button onclick="filterByMonth()">Filter</button>
+        <div class="history-btn" onclick="toggleHistory()">📜 Show History</div>
+        <div class="transaction-list hidden" id="full-history"></div>
 
-        <h3>Transaction History</h3>
-        <div id="history"></div>
-
-        <button onclick="logout()">Logout</button>
+        <div class="toggle-btn" onclick="toggleDarkMode()">🌙 Toggle Dark Mode</div>
     </div>
 
+    <script>
+        let balance = 0;
+        let transactions = [];
+
+        function addTransaction() {
+            const desc = document.getElementById('desc').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+
+            if (desc.trim() === '' || isNaN(amount) || amount <= 0) {
+                alert('Please enter valid details.');
+                return;
+            }
+
+            // Prevent balance from going negative
+            if (type === 'expense' && balance - amount < 0) {
+                alert('Insufficient balance! Cannot go negative.');
+                return;
+            }
+
+            // Update Balance
+            if (type === 'income') {
+                balance += amount;
+            } else {
+                balance -= amount;
+            }
+            document.getElementById('balance').innerText = balance.toFixed(2);
+
+            // Add to transactions
+            transactions.unshift({ desc, amount, type }); // Unshift to add at the start
+
+            // Update UI
+            updateTransactions();
+
+            // Clear fields
+            document.getElementById('desc').value = '';
+            document.getElementById('amount').value = '';
+        }
+
+        function updateTransactions() {
+            const transactionList = document.getElementById('transaction-list');
+            const fullHistoryList = document.getElementById('full-history');
+            transactionList.innerHTML = '';
+            fullHistoryList.innerHTML = '';
+
+            // Show only the latest 5 transactions on dashboard
+            transactions.slice(0, 5).forEach(transaction => {
+                transactionList.appendChild(createTransactionElement(transaction));
+            });
+
+            // Show full history in the history section
+            transactions.forEach(transaction => {
+                fullHistoryList.appendChild(createTransactionElement(transaction));
+            });
+        }
+
+        function createTransactionElement(transaction) {
+            const div = document.createElement('div');
+            div.classList.add('transaction', transaction.type);
+            div.innerHTML = `
+                <span>${transaction.desc}</span>
+                <span>${transaction.type === 'income' ? '+' : '-'} ₹${transaction.amount.toFixed(2)}</span>
+            `;
+            return div;
+        }
+
+        function toggleHistory() {
+            const historyDiv = document.getElementById('full-history');
+            historyDiv.classList.toggle('hidden');
+
+            const btn = document.querySelector('.history-btn');
+            btn.innerText = historyDiv.classList.contains('hidden') ? '📜 Show History' : '📜 Hide History';
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
 </body>
 </html>
